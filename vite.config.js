@@ -1,0 +1,19 @@
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [react()],
+  base: '/', // Ensures correct path for Azure Static Web Apps
+  optimizeDeps: {
+    include: ['react', 'react-dom', '@use-gesture/react', 'framer-motion', 'react-spring']
+  },
+  resolve: {
+    alias: {
+      'react': 'react',
+      'react-dom': 'react-dom'
+    }
+  },
+  build: {
+    outDir: 'dist' // Specify output directory for Azure deployment
+  }
+});

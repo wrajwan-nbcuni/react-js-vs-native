@@ -1,0 +1,27 @@
+.
+├── directory-structure.txt
+├── index.html
+├── package-lock.json
+├── package.json
+├── public
+│   ├── manifest.json
+│   └── sw.js
+├── README.md
+├── run.sh
+└── src
+    ├── App.jsx
+    ├── assets
+    ├── components
+    │   ├── ComparisonTable.jsx
+    │   ├── device
+    │   │   ├── DeviceAccess.jsx
+    │   │   └── HapticFeedback.jsx
+    │   ├── Home.jsx
+    │   ├── storage
+    │   │   └── StorageCapabilities.jsx
+    │   └── ui
+    │       └── UIAnimations.jsx
+    ├── index.jsx
+    └── styles.css
+
+8 directories, 17 files

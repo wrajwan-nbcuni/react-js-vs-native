@@ -1,0 +1,8 @@
+{
+  "name": "React Native vs React.js Features",
+  "short_name": "RN-React Compare",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0070f3"
+}
