@@ -5,10 +5,10 @@ const Home = () => {
   return (
     <div>
       <div className="card">
-        <h2>Comparing React Native and React.js Web Capabilities</h2>
+        <h2>Comparing React Native, Capacitor, and React.js Web Capabilities</h2>
         <p>
           This demo showcases what's possible with React.js on the web compared to
-          React Native for mobile apps, focusing on the following areas:
+          React Native and Capacitor for mobile apps, focusing on the following areas:
         </p>
 
         <ul style={{ margin: '15px 0', paddingLeft: '20px' }}>
@@ -38,14 +38,26 @@ const Home = () => {
       <div className="card">
         <h3>Key Takeaways</h3>
         <p>
-          While React Native offers deeper integration with native device features and better
-          performance for complex UI, React.js web applications have improved significantly
+          While <strong>React Native</strong> offers deeper integration with native device features and better
+          performance for complex UI, <strong>Capacitor</strong> bridges the gap between web and native by providing native
+          access from web-based apps, and <strong>React.js web applications</strong> have improved significantly
           and can now implement many native-like features using modern Web APIs.
         </p>
         <p>
           The main differences are in permission models, performance optimizations, and
-          the user experience flow when accessing hardware features.
+          the user experience flow when accessing hardware features:
         </p>
+        <ul>
+          <li>
+            <strong>React Native:</strong> Native-first development, full access to hardware APIs, optimized performance.
+          </li>
+          <li>
+            <strong>Capacitor:</strong> Web-first development with native bridge, native hardware access plus web fallback, easier to maintain cross-platform compatibility.
+          </li>
+          <li>
+            <strong>React.js Web:</strong> Web-only, limited but improving hardware access through browser APIs, broader device compatibility, simpler deployment.
+          </li>
+        </ul>
       </div>
     </div>
   );

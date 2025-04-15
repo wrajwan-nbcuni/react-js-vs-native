@@ -36,6 +36,10 @@ header {
   padding: 1rem 0;
 }
 
+.ios header {
+  padding-top: 3em;
+}
+
 nav {
   display: flex;
   padding: 0.5rem 0;
