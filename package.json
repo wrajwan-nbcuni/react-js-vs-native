@@ -4,24 +4,43 @@
   "description": "Comparing React Native and React.js web capabilities",
   "main": "src/index.js",
   "scripts": {
-    "start": "vite",
+    "start": "vite --host --port 3000",
     "build": "vite build",
     "serve": "vite preview",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "capacitor:add:android": "cap add android",
+    "capacitor:add:ios": "cap add ios",
+    "capacitor:build": "vite build && cap copy",
+    "capacitor:sync": "cap sync",
+    "capacitor:open:android": "cap open android",
+    "capacitor:open:ios": "cap open ios",
+    "capacitor:serve": "vite build && cap copy && cap serve"
   },
   "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/camera": "^7.0.1",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/device": "^7.0.1",
+    "@capacitor/geolocation": "^7.1.1",
+    "@capacitor/haptics": "^7.0.1",
+    "@capacitor/ios": "^7.2.0",
+    "@capacitor/motion": "^7.0.0",
+    "@capacitor/preferences": "^7.0.1",
+    "@capacitor/share": "^7.0.1",
+    "@use-gesture/react": "^10.3.1",
+    "framer-motion": "10.12.4",
+    "localforage": "1.10.0",
     "react": "18.2.0",
+    "react-device-detect": "2.2.3",
     "react-dom": "18.2.0",
     "react-router-dom": "6.10.0",
-    "framer-motion": "10.12.4",
     "react-spring": "9.4.5",
-    "@use-gesture/react": "10.2.27",
-    "react-webcam": "7.0.1",
-    "react-device-detect": "2.2.3",
-    "localforage": "1.10.0"
+    "react-webcam": "7.0.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "4.0.0",
+    "typescript": "^5.8.3",
     "vite": "4.3.5"
   },
   "engines": {

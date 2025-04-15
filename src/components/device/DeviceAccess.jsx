@@ -1,40 +1,54 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { Device } from '@capacitor/device';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  browserName,
+  deviceType,
+  getUA,
+  isAndroid,
+  isIOS,
+  isMobile,
+  mobileModel,
+  mobileVendor,
+  osName
+} from 'react-device-detect';
 import Webcam from 'react-webcam';
 import {
-  isMobile,
-  isIOS,
-  isAndroid,
-  browserName,
-  osName,
-  mobileVendor,
-  mobileModel,
-  getUA,
-  deviceType
-} from 'react-device-detect';
+  cameraService,
+  deviceService,
+  getPlatform,
+  isNative,
+  locationService
+} from '../../services/CapacitorService';
 
 const DeviceAccess = () => {
+  // Platform detection
+  const [isCapacitor, setIsCapacitor] = useState(false);
+  const [capacitorPlatform, setCapacitorPlatform] = useState('web');
+
   // Camera state
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [activeCamera, setActiveCamera] = useState('user');
   const webcamRef = useRef(null);
+  const [hasPhotoPermission, setHasPhotoPermission] = useState(false);
 
   // Geolocation state
   const [location, setLocation] = useState(null);
   const [geoError, setGeoError] = useState(null);
   const [watchId, setWatchId] = useState(null);
   const [locationHistory, setLocationHistory] = useState([]);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
 
   // Device orientation state
   const [orientation, setOrientation] = useState(null);
   const [motionPermission, setMotionPermission] = useState('unknown');
 
   // Battery state
-  const [batteryInfo, setBatteryInfo] = useState(null);
-
-  // Vibration state
-  const [vibrationSupported, setVibrationSupported] = useState(false);
+  const [batteryInfo, setBatteryInfo] = useState({
+    level: 0,
+    charging: false
+  });
 
   // Ambient light sensor state
   const [lightLevel, setLightLevel] = useState(null);
@@ -45,6 +59,26 @@ const DeviceAccess = () => {
 
   // Check device capabilities on mount
   useEffect(() => {
+    // Check if running on Capacitor
+    const checkCapacitor = async () => {
+      const nativePlatform = isNative();
+      setIsCapacitor(nativePlatform);
+      setCapacitorPlatform(getPlatform());
+
+      if (nativePlatform) {
+        // Get device info for native platform
+        try {
+          const info = await deviceService.getDeviceInfo();
+          console.log("Device info:", info);
+          // Use the info if needed
+        } catch (error) {
+          console.error('Error getting device info:', error);
+        }
+      }
+    };
+
+    checkCapacitor();
+
     // Check for motion sensors permission
     if (typeof DeviceMotionEvent !== 'undefined' &&
         typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -54,11 +88,6 @@ const DeviceAccess = () => {
       window.addEventListener('deviceorientation', handleOrientation);
     } else {
       setMotionPermission('unavailable');
-    }
-
-    // Check for vibration support
-    if ('vibrate' in navigator) {
-      setVibrationSupported(true);
     }
 
     // Check for light sensor support
@@ -76,8 +105,8 @@ const DeviceAccess = () => {
       }
     }
 
-    // Check for Battery API
-    if ('getBattery' in navigator) {
+    // Check for Battery API if not on Capacitor
+    if (!isCapacitor && 'getBattery' in navigator) {
       navigator.getBattery().then(battery => {
         updateBatteryInfo(battery);
 
@@ -95,8 +124,8 @@ const DeviceAccess = () => {
       connection.addEventListener('change', () => updateNetworkInfo(connection));
     }
 
-    // Get available cameras
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+    // Get available cameras if not using Capacitor
+    if (!isCapacitor && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
       navigator.mediaDevices.enumerateDevices()
         .then(devices => {
           const videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -110,11 +139,45 @@ const DeviceAccess = () => {
     // Cleanup function
     return () => {
       if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
+        if (isCapacitor) {
+          locationService.clearWatch(watchId);
+        } else {
+          navigator.geolocation.clearWatch(watchId);
+        }
       }
       window.removeEventListener('deviceorientation', handleOrientation);
     };
   }, []);
+
+  useEffect(() => {
+    const fetchBatteryInfo = async () => {
+      if (isCapacitor) {
+        try {
+          const battery = await Device.getBatteryInfo();
+          setBatteryInfo({
+            level: battery.batteryLevel * 100, // Correctly multiplied ONCE
+            charging: battery.isCharging
+          });
+        } catch (error) {
+          console.error('Error fetching battery info:', error);
+        }
+      } else if ('getBattery' in navigator) {
+        navigator.getBattery().then(battery => {
+          updateBatteryInfo(battery);
+
+          battery.addEventListener('levelchange', () => updateBatteryInfo(battery));
+          battery.addEventListener('chargingchange', () => updateBatteryInfo(battery));
+        });
+      }
+    };
+
+    fetchBatteryInfo();
+
+    // Optional: update battery info periodically every 60 seconds
+    const interval = setInterval(fetchBatteryInfo, 60000);
+
+    return () => clearInterval(interval);
+  }, [isCapacitor]);
 
   const updateBatteryInfo = (battery) => {
     setBatteryInfo({
@@ -162,15 +225,47 @@ const DeviceAccess = () => {
     });
   };
 
-  // Camera functions
-  const enableCamera = () => setCameraEnabled(true);
+  // Camera functions - now with Capacitor support
+  const enableCamera = async () => {
+    if (isCapacitor) {
+      try {
+        // Request permissions first
+        const permission = await cameraService.requestPermissions();
+        setHasPhotoPermission(true);
+
+        // Take a photo immediately using Capacitor
+        const photo = await cameraService.getPhoto();
+        if (photo) {
+          // For Capacitor, the photo comes in a different format
+          setCapturedImage(photo.webPath || photo.path || photo.dataUrl);
+        }
+      } catch (error) {
+        console.error('Error accessing camera', error);
+        setHasPhotoPermission(false);
+      }
+    } else {
+      // Web implementation
+      setCameraEnabled(true);
+    }
+  };
+
   const disableCamera = () => {
     setCameraEnabled(false);
     setCapturedImage(null);
   };
 
   const captureImage = () => {
-    if (webcamRef.current) {
+    if (isCapacitor) {
+      // Use Capacitor camera
+      cameraService.getPhoto().then(photo => {
+        if (photo) {
+          setCapturedImage(photo.webPath || photo.path || photo.dataUrl);
+        }
+      }).catch(error => {
+        console.error('Error taking photo', error);
+      });
+    } else if (webcamRef.current) {
+      // Use web camera
       const imgSrc = webcamRef.current.getScreenshot();
       setCapturedImage(imgSrc);
     }
@@ -180,9 +275,50 @@ const DeviceAccess = () => {
     setActiveCamera(prev => prev === 'user' ? 'environment' : 'user');
   };
 
-  // Geolocation functions
-  const getLocation = () => {
-    if (navigator.geolocation) {
+  // Geolocation functions - now with Capacitor support
+  const getLocation = async () => {
+    if (isCapacitor) {
+      try {
+        const perms = await locationService.requestPermissions();
+        if (perms.location !== 'granted') {
+          setGeoError('Location permissions not granted. Please allow location access in Settings.');
+          return;
+        }
+
+        let receivedLocation = false;
+
+        const watchId = await locationService.watchPosition((position) => {
+          if (position && !receivedLocation) {
+            receivedLocation = true;
+            const newLocation = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              timestamp: position.timestamp
+            };
+
+            setLocation(newLocation);
+            setLocationHistory(prev => [...prev, newLocation]);
+            setGeoError(null);
+
+            // Clear watch immediately after first result
+            locationService.clearWatch(watchId);
+          }
+        });
+
+        // Fallback timeout (optional, clears watch after 10 seconds if no response)
+        setTimeout(() => {
+          if (!receivedLocation) {
+            locationService.clearWatch(watchId);
+            setGeoError('Could not obtain location quickly enough. Please try again.');
+          }
+        }, 10000); // 10 seconds timeout
+
+      } catch (error) {
+        console.error('Location error:', error);
+        setGeoError(`Location error: ${error.message || 'Unable to access location'}`);
+      }
+    } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newLocation = {
@@ -205,7 +341,35 @@ const DeviceAccess = () => {
   };
 
   const watchLocation = () => {
-    if (navigator.geolocation && !watchId) {
+    if (isCapacitor) {
+      // Check permissions first
+      locationService.checkPermissions().then(perms => {
+        if (perms.location !== 'granted') {
+          setGeoError('Location services are not enabled. Please go to Settings → Privacy → Location Services and enable location for this app.');
+          return;
+        }
+
+        // Use Capacitor for native watching
+        const id = locationService.watchPosition((position) => {
+          if (position) {
+            const newLocation = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              timestamp: position.timestamp
+            };
+            setLocation(newLocation);
+            setLocationHistory(prev => [...prev, newLocation]);
+            setGeoError(null);
+          }
+        });
+
+        if (id) setWatchId(id);
+      }).catch(error => {
+        setGeoError(`Location error: ${error.message}`);
+      });
+    } else if (navigator.geolocation && !watchId) {
+      // Web implementation
       const id = navigator.geolocation.watchPosition(
         (position) => {
           const newLocation = {
@@ -228,27 +392,12 @@ const DeviceAccess = () => {
 
   const clearLocationWatch = () => {
     if (watchId) {
-      navigator.geolocation.clearWatch(watchId);
-      setWatchId(null);
-    }
-  };
-
-  // Vibration function
-  const triggerVibration = (pattern) => {
-    if (vibrationSupported) {
-      switch (pattern) {
-        case 'short':
-          navigator.vibrate(200);
-          break;
-        case 'long':
-          navigator.vibrate(1000);
-          break;
-        case 'pattern':
-          navigator.vibrate([100, 50, 200, 50, 300]);
-          break;
-        default:
-          navigator.vibrate(200);
+      if (isCapacitor) {
+        locationService.clearWatch(watchId);
+      } else {
+        navigator.geolocation.clearWatch(watchId);
       }
+      setWatchId(null);
     }
   };
 
@@ -256,8 +405,9 @@ const DeviceAccess = () => {
     <div>
       <h2>Device & Hardware Access</h2>
       <p>
-        Modern web browsers provide APIs for accessing various device features,
-        but usually with permission prompts and some limitations compared to native apps.
+        {isCapacitor
+          ? `Using Capacitor native bridge on ${capacitorPlatform} for enhanced device access.`
+          : 'Modern web browsers provide APIs for accessing various device features, but usually with permission prompts and some limitations compared to native apps.'}
       </p>
 
       <div className="card">
@@ -270,6 +420,18 @@ const DeviceAccess = () => {
           padding: '15px',
           marginBottom: '10px'
         }}>
+          {isCapacitor ? (
+            <div style={{
+              backgroundColor: '#e6f7ff',
+              padding: '8px',
+              borderRadius: '4px',
+              marginBottom: '10px',
+              borderLeft: '4px solid #1890ff'
+            }}>
+              <p><strong>Running on Capacitor:</strong> {capacitorPlatform}</p>
+            </div>
+          ) : null}
+
           <p><strong>Device Type:</strong> {deviceType}</p>
           <p><strong>Operating System:</strong> {osName}</p>
           <p><strong>Browser:</strong> {browserName}</p>
@@ -314,7 +476,7 @@ const DeviceAccess = () => {
                     backgroundColor: batteryInfo.charging ? '#52c41a' : batteryInfo.level < 20 ? '#f5222d' : '#1890ff'
                   }}></div>
                 </div>
-                <span>{batteryInfo.level.toFixed(0)}%</span>
+                <span>{Math.floor(batteryInfo.level)}%</span>
                 {batteryInfo.charging && <span style={{ color: '#52c41a' }}>⚡ Charging</span>}
               </div>
             </div>
@@ -332,8 +494,9 @@ const DeviceAccess = () => {
           )}
         </div>
         <p>
-          In React Native, this information is accessible without permission prompts
-          through the Platform and DeviceInfo APIs.
+          {isCapacitor
+            ? `Capacitor provides enhanced device information access on ${capacitorPlatform}.`
+            : 'In React Native, this information is accessible without permission prompts through the Platform and DeviceInfo APIs.'}
         </p>
       </div>
 
@@ -341,26 +504,42 @@ const DeviceAccess = () => {
         <div className="card-header">
           <h3>Camera Access</h3>
         </div>
-        {!cameraEnabled ? (
-          <button onClick={enableCamera}>Enable Camera</button>
+        {!cameraEnabled && !capturedImage ? (
+          <button onClick={enableCamera}>
+            {isCapacitor ? 'Take Photo with Capacitor' : 'Enable Camera'}
+          </button>
         ) : (
           <div>
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              className="webcam-video"
-              videoConstraints={{
-                facingMode: activeCamera
-              }}
-            />
+            {!isCapacitor && !capturedImage && (
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                className="webcam-video"
+                videoConstraints={{
+                  facingMode: activeCamera
+                }}
+              />
+            )}
+
             <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button onClick={captureImage}>Capture Photo</button>
-              <button onClick={switchCamera}>Switch Camera</button>
-              <button onClick={disableCamera} className="danger">Disable Camera</button>
+              {!capturedImage && !isCapacitor && (
+                <>
+                  <button onClick={captureImage}>Capture Photo</button>
+                  <button onClick={switchCamera}>Switch Camera</button>
+                </>
+              )}
+
+              {isCapacitor && !capturedImage && (
+                <button onClick={captureImage}>Take Another Photo</button>
+              )}
+
+              <button onClick={disableCamera} className="danger">
+                {capturedImage ? 'Clear Image' : 'Disable Camera'}
+              </button>
             </div>
 
-            {availableCameras.length > 0 && (
+            {availableCameras.length > 0 && !isCapacitor && (
               <div style={{ marginTop: '10px' }}>
                 <p><strong>Available Cameras:</strong> {availableCameras.length}</p>
                 <ul style={{ listStyleType: 'none', padding: 0 }}>
@@ -403,12 +582,9 @@ const DeviceAccess = () => {
         )}
         <div style={{ marginTop: '15px' }}>
           <p>
-            Web camera access requires explicit user permission and works only in secure contexts (HTTPS).
-            In React Native, camera permissions are requested at app installation or first use.
-          </p>
-          <p>
-            Web apps have limited camera control compared to native apps, with fewer options
-            for flash, zoom, exposure, and more advanced features.
+            {isCapacitor
+              ? 'Capacitor provides native camera access with better control and performance.'
+              : 'Web camera access requires explicit user permission and works only in secure contexts (HTTPS). In React Native, camera permissions are requested at app installation or first use.'}
           </p>
         </div>
       </div>
@@ -498,8 +674,9 @@ const DeviceAccess = () => {
 
         <div style={{ marginTop: '15px' }}>
           <p>
-            Geolocation API is well-supported across browsers but requires user permission.
-            React Native offers more background location capabilities and better battery optimization.
+            {isCapacitor
+              ? 'Capacitor provides native geolocation services with better accuracy and background capabilities.'
+              : 'Geolocation API is well-supported across browsers but requires user permission. React Native offers more background location capabilities and better battery optimization.'}
           </p>
         </div>
       </div>
@@ -562,34 +739,6 @@ const DeviceAccess = () => {
 
       <div className="card">
         <div className="card-header">
-          <h3>Vibration</h3>
-        </div>
-
-        {vibrationSupported ? (
-          <div>
-            <p>Your device supports vibration. Try different patterns:</p>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-              <button onClick={() => triggerVibration('short')}>Short Vibration</button>
-              <button onClick={() => triggerVibration('long')}>Long Vibration</button>
-              <button onClick={() => triggerVibration('pattern')}>Pattern Vibration</button>
-            </div>
-          </div>
-        ) : (
-          <div className="feature-unavailable">
-            <p>Vibration is not supported on this device or browser.</p>
-          </div>
-        )}
-
-        <div style={{ marginTop: '15px' }}>
-          <p>
-            The Web Vibration API allows basic haptic feedback, but with less control than
-            native apps. Not all browsers support this API, particularly on desktop.
-          </p>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
           <h3>Ambient Light Sensor</h3>
         </div>
 
@@ -623,13 +772,14 @@ const DeviceAccess = () => {
 
       <div className="card">
         <div className="card-header">
-          <h3>Web vs Native Comparison</h3>
+          <h3>Web vs Capacitor vs Native Comparison</h3>
         </div>
         <table className="comparison-table">
           <thead>
             <tr>
               <th>Feature</th>
               <th>React.js Web</th>
+              <th>Capacitor</th>
               <th>React Native</th>
             </tr>
           </thead>
@@ -637,42 +787,44 @@ const DeviceAccess = () => {
             <tr>
               <td>Camera Access</td>
               <td>MediaDevices API, permission required</td>
+              <td>Native camera module with web fallback</td>
               <td>Native camera module, better control</td>
             </tr>
             <tr>
               <td>Geolocation</td>
               <td>Geolocation API, limited background access</td>
+              <td>Native location services with web fallback</td>
               <td>Native location services, background tracking</td>
             </tr>
             <tr>
               <td>Device Sensors</td>
               <td>Limited access, inconsistent across browsers</td>
+              <td>Native sensors with progressive enhancement</td>
               <td>Full access to all device sensors</td>
             </tr>
             <tr>
               <td>Push Notifications</td>
               <td>Web Push API, requires service worker</td>
+              <td>Native push notifications + web fallback</td>
               <td>Native push notifications</td>
             </tr>
             <tr>
               <td>Bluetooth/NFC</td>
               <td>Web Bluetooth API (limited), no NFC</td>
+              <td>Native Bluetooth/NFC with plugins</td>
               <td>Native Bluetooth and NFC access</td>
             </tr>
             <tr>
-              <td>File System</td>
-              <td>Limited access via File API</td>
-              <td>Full file system access</td>
+              <td>Development</td>
+              <td>Web-only development</td>
+              <td>Web-first with native bridge</td>
+              <td>Native-first development</td>
             </tr>
             <tr>
-              <td>Background Processing</td>
-              <td>Limited via Service Workers</td>
-              <td>Native background processes</td>
-            </tr>
-            <tr>
-              <td>Haptic Feedback</td>
-              <td>Basic vibration API</td>
-              <td>Advanced haptic patterns</td>
+              <td>Distribution</td>
+              <td>Web only</td>
+              <td>Web + App Stores</td>
+              <td>App Stores only</td>
             </tr>
           </tbody>
         </table>

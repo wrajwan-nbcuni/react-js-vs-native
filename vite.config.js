@@ -3,7 +3,6 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Ensures correct path for Azure Static Web Apps
   optimizeDeps: {
     include: ['react', 'react-dom', '@use-gesture/react', 'framer-motion', 'react-spring']
   },
@@ -14,6 +13,8 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist' // Specify output directory for Azure deployment
+    outDir: 'dist',
+    // Ensure source maps for better debugging in Capacitor
+    sourcemap: true,
   }
 });

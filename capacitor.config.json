@@ -1,0 +1,51 @@
+{
+  "appId": "com.example.reactfeatures",
+  "appName": "React Native Features Comparison",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0070f3",
+      "showSpinner": true,
+      "spinnerColor": "#ffffff",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "iosSpinnerStyle": "small"
+    },
+    "Camera": {
+      "ios": {
+        "cameraUsageDescription": "This app uses your camera for feature testing"
+      }
+    },
+    "Geolocation": {
+      "ios": {
+        "locationWhenInUseUsageDescription": "This app requires geolocation to demonstrate features",
+        "locationAlwaysUsageDescription": "This app requires background location for tracking demos"
+      }
+    },
+    "Photos": {
+      "ios": {
+        "photosUsageDescription": "This app requires photo library access to save and select images"
+      }
+    },
+    "Microphone": {
+      "ios": {
+        "microphoneUsageDescription": "This app requires microphone access for audio demos"
+      }
+    },
+    "Motion": {
+      "ios": {
+        "motionUsageDescription": "This app uses motion sensors for features"
+      }
+    },
+    "MediaLibrary": {
+      "ios": {
+        "mediaLibraryUsageDescription": "This app requires media library access"
+      }
+    }
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
