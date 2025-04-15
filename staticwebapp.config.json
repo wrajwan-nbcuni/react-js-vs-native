@@ -1,16 +1,22 @@
 {
-    "navigationFallback": {
-      "rewrite": "/index.html",
-      "exclude": [
-        "/assets/*",
-        "/static/*"
-      ]
-    },
-    "routes": [
-      {
-        "route": "/*",
-        "serve": "/index.html",
-        "statusCode": 200
-      }
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/assets/*",
+      "/static/*"
     ]
-  }
+  },
+  "routes": [
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "statusCode": 200
+    }
+  ],
+  "platformErrorOverrides": [
+    {
+      "errorType": "NotFound",
+      "serve": "/index.html"
+    }
+  ]
+}
